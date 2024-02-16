@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'firebase_options.dart';
 
 class ChatScreen extends StatelessWidget {
   const ChatScreen({super.key});
@@ -52,17 +50,18 @@ class MessageList extends StatelessWidget {
         }
         final chatDocs = chatSnapshot.data?.docs;
         if (chatDocs == null || chatDocs.isEmpty) {
-            return Center(
+            return const Center(
               child: Text('No messages found.'),
             );
         }
         
         return ListView.builder(
           reverse: true,
-          itemCount: chatDocs?.length,
+          itemCount: chatDocs.length,
           itemBuilder: (ctx, index) => MessageBubble(
-            chatDocs![index]['text'],
+            chatDocs[index]['text'],
             chatDocs[index]['userId'] == user?.uid,
+            chatDocs[index]['user'],
             key: ValueKey(chatDocs[index].id),
           ),
         );
@@ -74,14 +73,23 @@ class MessageList extends StatelessWidget {
 class MessageBubble extends StatelessWidget {
   final String message;
   final bool isMe;
+  final String userName;
 
-  const MessageBubble(this.message, this.isMe, {Key? key}) : super(key: key);
+  const MessageBubble(this.message, this.isMe, this.userName, {Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
+        if (!isMe)
+          Text(
+            userName,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black,
+            ),
+          ),
         Container(
           decoration: BoxDecoration(
             color: isMe ? Colors.blue : Colors.grey,
@@ -132,6 +140,7 @@ class _NewMessageWidgetState extends State<NewMessageWidget> {
       'text': _enteredMessage,
       'createdAt': Timestamp.now(),
       'userId': user!.uid,
+      'user': user.email,
     });
     _controller.clear();
   }

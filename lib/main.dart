@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'chat_screen.dart';
 import 'sign_up.dart';
@@ -35,17 +33,14 @@ class AuthenticationWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // Afficher un écran de chargement si la connexion est en cours
           return Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
             ),
           );
         } else if (snapshot.hasData) {
-          // L'utilisateur est connecté, rediriger vers la page de chat
           return ChatScreen();
         } else {
-          // L'utilisateur n'est pas connecté, afficher la page de connexion
           return LoginPage();
         }
       },
@@ -53,7 +48,6 @@ class AuthenticationWrapper extends StatelessWidget {
   }
 }
 
-// La classe LoginPage reste inchangée
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -71,7 +65,6 @@ class _LoginPageState extends State<LoginPage> {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-      // Connexion réussie, vous pouvez rediriger l'utilisateur vers une autre page ou effectuer d'autres actions.
       print('User logged in: ${userCredential.user!.uid}');
       } on FirebaseAuthException catch (e) {
         if (e.code == 'user-not-found') {
@@ -86,7 +79,6 @@ class _LoginPageState extends State<LoginPage> {
 }
 
   void _signUp() {
-    // Naviguer vers la page d'inscription
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => SignUpPage()),
@@ -133,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: Text('Login'),
               ),
               SizedBox(height: 10),
-              TextButton(
+              ElevatedButton(
                 onPressed: _signUp,
                 child: Text('Sign Up'),
               ),
