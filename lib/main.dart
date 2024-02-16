@@ -4,18 +4,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
+import 'chat_screen.dart';
+import 'sign_up.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> main() async {
+    WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform
   );
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -23,175 +23,124 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const ChatScreen(),
+      home: AuthenticationWrapper(),
     );
   }
 }
 
-class ChatScreen extends StatelessWidget {
-  const ChatScreen({super.key});
-
+class AuthenticationWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return StreamProvider<User?>.value(
-      value: FirebaseAuth.instance.authStateChanges(),
-      initialData: null,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Flutter Chat'),
-          actions: const [
-            LogoutButton(),
-          ],
-        ),
-        body: const Column(
-          children: [
-            Expanded(
-              child: MessageList(),
-            ),
-            NewMessageWidget(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class MessageList extends StatelessWidget {
-  const MessageList({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
     return StreamBuilder(
-      stream: FirebaseFirestore.instance
-          .collection('chat')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (ctx, AsyncSnapshot<QuerySnapshot> chatSnapshot) {
-        if (chatSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // Afficher un écran de chargement si la connexion est en cours
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
           );
+        } else if (snapshot.hasData) {
+          // L'utilisateur est connecté, rediriger vers la page de chat
+          return ChatScreen();
+        } else {
+          // L'utilisateur n'est pas connecté, afficher la page de connexion
+          return LoginPage();
         }
-        final chatDocs = chatSnapshot.data?.docs;
-        return ListView.builder(
-          reverse: true,
-          itemCount: chatDocs?.length,
-          itemBuilder: (ctx, index) => MessageBubble(
-            chatDocs![index]['text'],
-            chatDocs[index]['userId'] == user?.uid,
-            key: ValueKey(chatDocs[index].id),
-          ),
-        );
       },
     );
   }
 }
 
-class MessageBubble extends StatelessWidget {
-  final String message;
-  final bool isMe;
+// La classe LoginPage reste inchangée
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
 
-  const MessageBubble(this.message, this.isMe, {Key? key}) : super(key: key);
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  void _signInWithEmailAndPassword() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+      // Connexion réussie, vous pouvez rediriger l'utilisateur vers une autre page ou effectuer d'autres actions.
+      print('User logged in: ${userCredential.user!.uid}');
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found') {
+          print('No user found for that email.');
+        } else if (e.code == 'wrong-password') {
+          print('Wrong password provided for that user.');
+        } else {
+          print('Error: ${e.message}');
+        }
+      }
+    }
+}
+
+  void _signUp() {
+    // Naviguer vers la page d'inscription
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SignUpPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: isMe ? Colors.blue : Colors.grey,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(12),
-              topRight: const Radius.circular(12),
-              bottomLeft: isMe ? const Radius.circular(12) : const Radius.circular(0),
-              bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(12),
-            ),
-          ),
-          width: 140,
-          padding: const EdgeInsets.symmetric(
-            vertical: 10,
-            horizontal: 16,
-          ),
-          margin: const EdgeInsets.symmetric(
-            vertical: 4,
-            horizontal: 8,
-          ),
-          child: Text(
-            message,
-            style: const TextStyle(
-              color: Colors.white,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Login'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(labelText: 'Email'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(labelText: 'Password'),
+                obscureText: true,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your password';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _signInWithEmailAndPassword,
+                child: Text('Login'),
+              ),
+              SizedBox(height: 10),
+              TextButton(
+                onPressed: _signUp,
+                child: Text('Sign Up'),
+              ),
+            ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-class NewMessageWidget extends StatefulWidget {
-  const NewMessageWidget({super.key});
-
-  @override
-  _NewMessageWidgetState createState() => _NewMessageWidgetState();
-}
-
-class _NewMessageWidgetState extends State<NewMessageWidget> {
-  final _controller = TextEditingController();
-  var _enteredMessage = '';
-
-  void _sendMessage() async {
-    FocusScope.of(context).unfocus();
-    final user = FirebaseAuth.instance.currentUser;
-    final userData = await FirebaseFirestore.instance.collection('users').doc(user?.uid).get();
-    FirebaseFirestore.instance.collection('chat').add({
-      'text': _enteredMessage,
-      'createdAt': Timestamp.now(),
-      'userId': user!.uid,
-    });
-    _controller.clear();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(8),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(labelText: 'Send a message...'),
-              onChanged: (value) {
-                setState(() {
-                  _enteredMessage = value;
-                });
-              },
-            ),
-          ),
-          IconButton(
-            color: Theme.of(context).primaryColor,
-            icon: const Icon(Icons.send),
-            onPressed: _enteredMessage.trim().isEmpty ? null : _sendMessage,
-          ),
-        ],
       ),
-    );
-  }
-}
-
-class LogoutButton extends StatelessWidget {
-  const LogoutButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.logout),
-      onPressed: () {
-        FirebaseAuth.instance.signOut();
-      },
     );
   }
 }
