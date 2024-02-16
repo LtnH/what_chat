@@ -12,9 +12,7 @@ class SignUpPage extends StatelessWidget {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      // Inscription réussie, vous pouvez rediriger l'utilisateur vers une autre page ou effectuer d'autres actions.
       print('User signed up: ${userCredential.user!.uid}');
-      // Par exemple, redirigez l'utilisateur vers la page de chat
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => ChatScreen()),
@@ -46,13 +44,11 @@ class SignUpPage extends StatelessWidget {
             TextFormField(
               controller: _emailController,
               decoration: InputDecoration(labelText: 'Email'),
-              // Ici vous pouvez ajouter la logique de validation de l'email
             ),
             TextFormField(
               controller: _passwordController,
               decoration: InputDecoration(labelText: 'Password'),
               obscureText: true,
-              // Ici vous pouvez ajouter la logique de validation du mot de passe
             ),
             SizedBox(height: 20),
             ElevatedButton(
